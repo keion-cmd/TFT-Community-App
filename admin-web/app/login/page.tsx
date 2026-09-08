@@ -59,31 +59,33 @@ export default function LoginPage() {
     setError(null);
     setSubmitting(true);
 
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (signInError || !data.user) {
-      setError(signInError?.message ?? "Unable to sign in.");
+      if (signInError || !data.user) {
+        setError(signInError?.message ?? "Unable to sign in.");
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", data.user.id)
+        .single();
+
+      if (profileError || profile?.role !== "admin") {
+        await supabase.auth.signOut();
+        setError("This account does not have admin access.");
+        return;
+      }
+
+      router.push("/dashboard");
+    } finally {
       setSubmitting(false);
-      return;
     }
-
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("role")
-      .eq("id", data.user.id)
-      .single();
-
-    if (profileError || profile?.role !== "admin") {
-      await supabase.auth.signOut();
-      setError("This account does not have admin access.");
-      setSubmitting(false);
-      return;
-    }
-
-    router.push("/dashboard");
   }
 
   return (
@@ -105,6 +107,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                   required
+                  disabled={submitting}
                 />
               </div>
               <div className="space-y-2">
@@ -117,6 +120,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     required
+                    disabled={submitting}
                     className="pr-10"
                   />
                   <button
@@ -156,6 +160,7 @@ export default function LoginPage() {
                   value={resetEmail}
                   onChange={(event) => setResetEmail(event.target.value)}
                   required
+                  disabled={resetSubmitting}
                 />
               </div>
               {resetError && (
