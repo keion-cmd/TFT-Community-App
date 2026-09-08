@@ -90,7 +90,7 @@ export default function LoginPage() {
         return;
       }
 
-      router.push("/dashboard");
+      router.replace("/dashboard");
     } finally {
       setSubmitting(false);
     }
