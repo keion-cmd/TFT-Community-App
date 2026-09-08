@@ -22,7 +22,7 @@ export default function AuthCallbackPage() {
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("role")
-        .eq("id", userId)
+        .eq("user_id", userId)
         .single();
 
       if (profileError || profile?.role !== "admin") {
