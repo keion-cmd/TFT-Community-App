@@ -8,7 +8,11 @@ import { supabase } from "@/lib/supabase";
 type AttendanceRecord = {
   id: string;
   checked_in_at: string;
+  photo_url: string | null;
+  thumbnailUrl: string | null;
 };
+
+const SIGNED_URL_TTL_SECONDS = 3600;
 
 export default function MemberDetailPage() {
   const { session, checking } = useAdminGuard();
@@ -25,11 +29,11 @@ export default function MemberDetailPage() {
 
     async function loadMember() {
       const [profileResult, historyResult] = await Promise.all([
-        supabase.from("profiles").select("full_name").eq("id", memberId).single(),
+        supabase.from("profiles").select("full_name").eq("user_id", memberId).single(),
         supabase
           .from("attendance")
-          .select("id, checked_in_at")
-          .eq("member_id", memberId)
+          .select("id, checked_in_at, photo_url")
+          .eq("user_id", memberId)
           .order("checked_in_at", { ascending: false }),
       ]);
 
@@ -43,8 +47,21 @@ export default function MemberDetailPage() {
         return;
       }
 
+      const records = historyResult.data ?? [];
+      const withThumbnails: AttendanceRecord[] = await Promise.all(
+        records.map(async (record) => {
+          if (!record.photo_url) {
+            return { ...record, thumbnailUrl: null };
+          }
+          const { data: signed } = await supabase.storage
+            .from("attendance-photos")
+            .createSignedUrl(record.photo_url, SIGNED_URL_TTL_SECONDS);
+          return { ...record, thumbnailUrl: signed?.signedUrl ?? null };
+        })
+      );
+
       setFullName(profileResult.data?.full_name ?? null);
-      setHistory(historyResult.data ?? []);
+      setHistory(withThumbnails);
       setLoading(false);
     }
 
@@ -68,6 +85,7 @@ export default function MemberDetailPage() {
         <table>
           <thead>
             <tr>
+              <th>Photo</th>
               <th>Date</th>
               <th>Time</th>
               <th>Status</th>
@@ -78,6 +96,19 @@ export default function MemberDetailPage() {
               const date = new Date(record.checked_in_at);
               return (
                 <tr key={record.id}>
+                  <td>
+                    {record.thumbnailUrl ? (
+                      <img
+                        src={record.thumbnailUrl}
+                        alt="Check-in photo"
+                        width={48}
+                        height={48}
+                        style={{ objectFit: "cover", borderRadius: 4 }}
+                      />
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td>{date.toLocaleDateString()}</td>
                   <td>{date.toLocaleTimeString()}</td>
                   <td>Present</td>
@@ -86,7 +117,7 @@ export default function MemberDetailPage() {
             })}
             {history.length === 0 && (
               <tr>
-                <td colSpan={3}>No attendance history.</td>
+                <td colSpan={4}>No attendance history.</td>
               </tr>
             )}
           </tbody>

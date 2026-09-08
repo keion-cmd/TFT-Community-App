@@ -31,12 +31,12 @@ export default function MembersPage() {
       const [membersResult, attendanceResult] = await Promise.all([
         supabase
           .from("profiles")
-          .select("id, full_name")
+          .select("user_id, full_name")
           .eq("role", "member")
           .order("full_name", { ascending: true }),
         supabase
           .from("attendance")
-          .select("member_id, checked_in_at")
+          .select("user_id, checked_in_at")
           .gte("checked_in_at", startOfDay.toISOString())
           .lt("checked_in_at", endOfDay.toISOString()),
       ]);
@@ -53,13 +53,13 @@ export default function MembersPage() {
 
       const attendanceByMember = new Map<string, string>();
       for (const record of attendanceResult.data ?? []) {
-        attendanceByMember.set(record.member_id, record.checked_in_at);
+        attendanceByMember.set(record.user_id, record.checked_in_at);
       }
 
       const merged: MemberRow[] = (membersResult.data ?? []).map((member) => {
-        const checkedInAt = attendanceByMember.get(member.id) ?? null;
+        const checkedInAt = attendanceByMember.get(member.user_id) ?? null;
         return {
-          id: member.id,
+          id: member.user_id,
           fullName: member.full_name,
           status: checkedInAt ? "Present" : "Absent",
           checkedInAt,
