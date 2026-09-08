@@ -5,8 +5,16 @@ import { useRouter } from "next/navigation";
 import { useAdminGuard } from "@/lib/authGuard";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -23,6 +31,11 @@ type GroupRow = {
   memberCount: number;
 };
 
+type MemberOption = {
+  userId: string;
+  fullName: string | null;
+};
+
 export default function GroupsPage() {
   const { session, checking } = useAdminGuard();
   const router = useRouter();
@@ -30,8 +43,12 @@ export default function GroupsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
+  const [memberOptions, setMemberOptions] = useState<MemberOption[]>([]);
+  const [selectedUserIds, setSelectedUserIds] = useState<Set<string>>(new Set());
   const [createError, setCreateError] = useState<string | null>(null);
+  const [createSuccess, setCreateSuccess] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
 
   async function loadGroups() {
@@ -69,9 +86,48 @@ export default function GroupsPage() {
     loadGroups();
   }, [session]);
 
+  async function loadMemberOptions() {
+    const { data, error: profilesError } = await supabase
+      .from("profiles")
+      .select("user_id, full_name")
+      .eq("role", "member")
+      .order("full_name", { ascending: true });
+
+    if (profilesError) {
+      setCreateError(profilesError.message);
+      return;
+    }
+
+    setMemberOptions(
+      (data ?? []).map((profile) => ({ userId: profile.user_id, fullName: profile.full_name }))
+    );
+  }
+
+  function openDialog() {
+    setNewGroupName("");
+    setSelectedUserIds(new Set());
+    setCreateError(null);
+    setCreateSuccess(null);
+    setDialogOpen(true);
+    loadMemberOptions();
+  }
+
+  function toggleMember(userId: string, checked: boolean) {
+    setSelectedUserIds((previous) => {
+      const next = new Set(previous);
+      if (checked) {
+        next.add(userId);
+      } else {
+        next.delete(userId);
+      }
+      return next;
+    });
+  }
+
   async function handleCreateGroup(event: React.FormEvent) {
     event.preventDefault();
     setCreateError(null);
+    setCreateSuccess(null);
 
     const trimmed = newGroupName.trim();
     if (!trimmed) {
@@ -82,18 +138,41 @@ export default function GroupsPage() {
     if (!session) return;
 
     setCreating(true);
-    const { error: insertError } = await supabase
-      .from("groups")
-      .insert({ name: trimmed, created_by: session.userId });
-    setCreating(false);
 
-    if (insertError) {
-      setCreateError(insertError.message);
+    const { data: insertedGroup, error: insertError } = await supabase
+      .from("groups")
+      .insert({ name: trimmed, created_by: session.userId })
+      .select("id")
+      .single();
+
+    if (insertError || !insertedGroup) {
+      setCreating(false);
+      setCreateError(`Failed to create group: ${insertError?.message ?? "unknown error"}`);
       return;
     }
 
+    const memberIds = Array.from(selectedUserIds);
+    if (memberIds.length > 0) {
+      const { error: membersError } = await supabase
+        .from("group_members")
+        .insert(memberIds.map((userId) => ({ group_id: insertedGroup.id, user_id: userId })));
+
+      if (membersError) {
+        setCreating(false);
+        setCreateError(
+          `Group "${trimmed}" was created, but adding members failed: ${membersError.message}`
+        );
+        loadGroups();
+        return;
+      }
+    }
+
+    setCreating(false);
+    setCreateSuccess("Group created.");
     setNewGroupName("");
+    setSelectedUserIds(new Set());
     loadGroups();
+    setDialogOpen(false);
   }
 
   if (checking || !session) {
@@ -106,32 +185,71 @@ export default function GroupsPage() {
 
   return (
     <main className="space-y-6">
-      <h1 className="font-heading text-2xl font-semibold tracking-tight">Groups</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="font-heading text-2xl font-semibold tracking-tight">Groups</h1>
+        <Button type="button" onClick={openDialog}>
+          New Group
+        </Button>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Create Group</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleCreateGroup} className="flex flex-wrap items-start gap-3">
-            <Input
-              type="text"
-              placeholder="New group name"
-              value={newGroupName}
-              onChange={(event) => setNewGroupName(event.target.value)}
-              className="max-w-xs"
-            />
-            <Button type="submit" disabled={creating}>
-              {creating ? "Creating…" : "Create Group"}
-            </Button>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New Group</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateGroup} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-group-name">Group name</Label>
+              <Input
+                id="new-group-name"
+                type="text"
+                placeholder="Group name"
+                value={newGroupName}
+                onChange={(event) => setNewGroupName(event.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Members</Label>
+              <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border border-input p-3">
+                {memberOptions.map((member) => (
+                  <div key={member.userId} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`member-${member.userId}`}
+                      checked={selectedUserIds.has(member.userId)}
+                      onCheckedChange={(checked) => toggleMember(member.userId, checked === true)}
+                    />
+                    <Label htmlFor={`member-${member.userId}`} className="font-normal">
+                      {member.fullName ?? member.userId}
+                    </Label>
+                  </div>
+                ))}
+                {memberOptions.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No members available.</p>
+                )}
+              </div>
+            </div>
+
+            {createError && (
+              <p role="alert" className="text-sm font-medium text-destructive">
+                {createError}
+              </p>
+            )}
+            {createSuccess && (
+              <p className="text-sm font-medium text-accent-foreground">{createSuccess}</p>
+            )}
+
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={creating}>
+                {creating ? "Creating…" : "Create"}
+              </Button>
+            </DialogFooter>
           </form>
-          {createError && (
-            <p role="alert" className="mt-2 text-sm font-medium text-destructive">
-              {createError}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+        </DialogContent>
+      </Dialog>
 
       {loading && <p className="text-sm text-muted-foreground">Loading groups…</p>}
       {error && (
