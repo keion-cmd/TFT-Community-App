@@ -15,6 +15,18 @@ export default function AuthCallbackPage() {
   const handledRef = useRef(false);
 
   useEffect(() => {
+    async function reject(reason: string) {
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.setItem("auth_callback_debug", reason);
+        } catch {
+          // ignore storage failures (e.g. private browsing)
+        }
+      }
+      await supabase.auth.signOut();
+      router.replace(`/login?error=not_admin&reason=${encodeURIComponent(reason)}`);
+    }
+
     async function finalize(userId: string) {
       if (handledRef.current) return;
       handledRef.current = true;
@@ -25,9 +37,22 @@ export default function AuthCallbackPage() {
         .eq("user_id", userId)
         .single();
 
-      if (profileError || profile?.role !== "admin") {
-        await supabase.auth.signOut();
-        router.replace("/login?error=not_admin");
+      if (profileError) {
+        await reject(
+          `profile query error: ${profileError.message}${
+            profileError.code ? ` (code ${profileError.code})` : ""
+          }`
+        );
+        return;
+      }
+
+      if (!profile) {
+        await reject("no profile row found for this user");
+        return;
+      }
+
+      if (profile.role !== "admin") {
+        await reject(`role mismatch: found role "${profile.role}"`);
         return;
       }
 
@@ -42,7 +67,13 @@ export default function AuthCallbackPage() {
       }
     });
 
-    supabase.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        if (handledRef.current) return;
+        handledRef.current = true;
+        reject(`getSession error: ${error.message}`);
+        return;
+      }
       if (data.session?.user) {
         finalize(data.session.user.id);
       }
