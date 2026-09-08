@@ -1,4 +1,4 @@
-import { supabase } from "./supabase";
+import { supabase, ATTENDANCE_PHOTOS_BUCKET } from "./supabase";
 
 function startOfTodayIso(): string {
   const start = new Date();
@@ -17,4 +17,13 @@ export async function getTodayAttendance(userId: string) {
 
   if (error) throw error;
   return data && data.length > 0 ? data[0] : null;
+}
+
+export async function getSignedAttendancePhotoUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(ATTENDANCE_PHOTOS_BUCKET)
+    .createSignedUrl(path, 3600);
+
+  if (error) throw error;
+  return data.signedUrl;
 }

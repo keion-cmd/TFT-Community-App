@@ -81,13 +81,9 @@ export default function CheckInScreen() {
 
       if (uploadError) throw uploadError;
 
-      const { data: publicUrlData } = supabase.storage
-        .from(ATTENDANCE_PHOTOS_BUCKET)
-        .getPublicUrl(filePath);
-
       const { error: insertError } = await supabase.from("attendance").insert({
         user_id: userId,
-        photo_url: publicUrlData.publicUrl,
+        photo_url: filePath,
         checked_in_at: new Date().toISOString(),
         status: "present",
       });
