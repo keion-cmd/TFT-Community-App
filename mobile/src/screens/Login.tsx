@@ -20,6 +20,7 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -85,15 +86,25 @@ export default function LoginScreen() {
         onChangeText={setEmail}
         editable={!submitting}
       />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry
-        autoCapitalize="none"
-        value={password}
-        onChangeText={setPassword}
-        editable={!submitting}
-      />
+      <View style={styles.passwordRow}>
+        <TextInput
+          style={styles.passwordInput}
+          placeholder="Password"
+          secureTextEntry={!showPassword}
+          autoCapitalize="none"
+          value={password}
+          onChangeText={setPassword}
+          editable={!submitting}
+        />
+        <Pressable
+          style={styles.toggleButton}
+          onPress={() => setShowPassword((prev) => !prev)}
+        >
+          <Text style={styles.toggleButtonText}>
+            {showPassword ? "Hide" : "Show"}
+          </Text>
+        </Pressable>
+      </View>
 
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
@@ -129,6 +140,30 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     marginBottom: 12,
     fontSize: 16,
+  },
+  passwordRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#ccc",
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  passwordInput: {
+    flex: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 16,
+  },
+  toggleButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  toggleButtonText: {
+    color: "#2563eb",
+    fontSize: 14,
+    fontWeight: "600",
   },
   error: {
     color: "#c0392b",
