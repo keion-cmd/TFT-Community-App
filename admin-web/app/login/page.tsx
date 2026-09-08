@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -16,12 +16,20 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
   const [mode, setMode] = useState<"signin" | "reset">("signin");
   const [resetEmail, setResetEmail] = useState("");
   const [resetError, setResetError] = useState<string | null>(null);
   const [resetSuccess, setResetSuccess] = useState<string | null>(null);
   const [resetSubmitting, setResetSubmitting] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("error") === "not_admin") {
+      setError("This account does not have admin access.");
+    }
+  }, []);
 
   function switchToReset() {
     setMode("reset");
@@ -88,6 +96,23 @@ export default function LoginPage() {
     }
   }
 
+  async function handleGoogleSignIn() {
+    setError(null);
+    setGoogleSubmitting(true);
+
+    const { error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    if (oauthError) {
+      setError(oauthError.message);
+      setGoogleSubmitting(false);
+    }
+  }
+
   return (
     <main className="flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-sm">
@@ -147,6 +172,23 @@ export default function LoginPage() {
               )}
               <Button type="submit" disabled={submitting} className="w-full">
                 {submitting ? "Signing in…" : "Sign in"}
+              </Button>
+              <div className="relative py-2">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">or</span>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handleGoogleSignIn}
+                disabled={submitting || googleSubmitting}
+              >
+                {googleSubmitting ? "Redirecting…" : "Continue with Google"}
               </Button>
             </form>
           ) : (
