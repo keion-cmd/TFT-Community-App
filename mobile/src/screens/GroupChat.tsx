@@ -33,6 +33,14 @@ function parseLinkContent(content: string | null): { label: string; url: string 
   };
 }
 
+function formatTime(isoDate: string): string {
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) return "";
+  const hours = date.getHours().toString().padStart(2, "0");
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  return `${hours}:${minutes}`;
+}
+
 export default function GroupChatScreen() {
   const router = useRouter();
   const { groupId: rawGroupId } = useLocalSearchParams<{ groupId: string }>();
@@ -106,7 +114,7 @@ export default function GroupChatScreen() {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator />
+        <ActivityIndicator color="#0088CC" />
       </View>
     );
   }
@@ -134,13 +142,14 @@ export default function GroupChatScreen() {
                 {isLink && link ? (
                   <Pressable onPress={() => Linking.openURL(link.url)}>
                     <Text style={styles.linkLabel}>🔗 Link</Text>
-                    <Text style={[isOwn ? styles.textOwn : styles.textOther, styles.linkText]}>
-                      {link.label}
-                    </Text>
+                    <Text style={styles.linkText}>{link.label}</Text>
                   </Pressable>
                 ) : (
                   <Text style={isOwn ? styles.textOwn : styles.textOther}>{item.content}</Text>
                 )}
+                <Text style={[styles.timestamp, isOwn ? styles.timestampOwn : styles.timestampOther]}>
+                  {formatTime(item.created_at)}
+                </Text>
               </View>
             </View>
           );
@@ -152,6 +161,7 @@ export default function GroupChatScreen() {
           value={draft}
           onChangeText={setDraft}
           placeholder="Message..."
+          placeholderTextColor="#9AA5B1"
           multiline
         />
         <Pressable
@@ -159,7 +169,7 @@ export default function GroupChatScreen() {
           onPress={handleSend}
           disabled={!draft.trim() || sending}
         >
-          <Text style={styles.sendButtonText}>{sending ? "..." : "Send"}</Text>
+          <Text style={styles.sendButtonText}>{sending ? "…" : "➤"}</Text>
         </Pressable>
       </View>
     </KeyboardAvoidingView>
@@ -167,44 +177,60 @@ export default function GroupChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  flex: { flex: 1 },
-  centered: { flex: 1, alignItems: "center", justifyContent: "center" },
+  flex: { flex: 1, backgroundColor: "#E7EBF0" },
+  centered: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#E7EBF0" },
   list: { padding: 12 },
   error: { color: "#c0392b", padding: 8, textAlign: "center" },
   bubbleRow: { flexDirection: "row", marginBottom: 8 },
   bubbleRowOwn: { justifyContent: "flex-end" },
   bubbleRowOther: { justifyContent: "flex-start" },
-  bubble: { maxWidth: "78%", borderRadius: 12, paddingVertical: 8, paddingHorizontal: 12 },
-  bubbleOwn: { backgroundColor: "#2563eb" },
-  bubbleOther: { backgroundColor: "#e5e7eb" },
-  sender: { fontSize: 11, fontWeight: "600", color: "#374151", marginBottom: 2 },
-  textOwn: { color: "#fff", fontSize: 15 },
-  textOther: { color: "#111827", fontSize: 15 },
-  linkLabel: { fontSize: 10, fontWeight: "700", color: "#93c5fd", marginBottom: 2 },
-  linkText: { textDecorationLine: "underline" },
+  bubble: {
+    maxWidth: "78%",
+    borderRadius: 17,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  bubbleOwn: {
+    backgroundColor: "#EFFDDE",
+    borderBottomRightRadius: 4,
+  },
+  bubbleOther: {
+    backgroundColor: "#FFFFFF",
+    borderBottomLeftRadius: 4,
+  },
+  sender: { fontSize: 11, fontWeight: "700", color: "#0088CC", marginBottom: 2 },
+  textOwn: { color: "#1F2933", fontSize: 15 },
+  textOther: { color: "#1F2933", fontSize: 15 },
+  linkLabel: { fontSize: 10, fontWeight: "700", color: "#0088CC", marginBottom: 2 },
+  linkText: { color: "#0088CC", textDecorationLine: "underline", fontSize: 15 },
+  timestamp: { fontSize: 10, marginTop: 4, alignSelf: "flex-end" },
+  timestampOwn: { color: "#7B8A5E" },
+  timestampOther: { color: "#9AA0A6" },
   inputRow: {
     flexDirection: "row",
     alignItems: "flex-end",
     padding: 8,
-    borderTopWidth: 1,
-    borderTopColor: "#e5e7eb",
+    backgroundColor: "#E7EBF0",
     gap: 8,
   },
   input: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: "#d1d5db",
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    maxHeight: 100,
-  },
-  sendButton: {
-    backgroundColor: "#2563eb",
-    borderRadius: 8,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 10,
+    maxHeight: 100,
+    fontSize: 15,
+    color: "#1F2933",
   },
-  sendButtonDisabled: { backgroundColor: "#93c5fd" },
-  sendButtonText: { color: "#fff", fontWeight: "600" },
+  sendButton: {
+    backgroundColor: "#0088CC",
+    borderRadius: 22,
+    width: 44,
+    height: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sendButtonDisabled: { backgroundColor: "#9AD0EA" },
+  sendButtonText: { color: "#fff", fontWeight: "700", fontSize: 18 },
 });
