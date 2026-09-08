@@ -4,6 +4,17 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAdminGuard } from "@/lib/authGuard";
 import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type GroupRow = {
   id: string;
@@ -88,58 +99,78 @@ export default function GroupsPage() {
   if (checking || !session) {
     return (
       <main>
-        <p>Checking session…</p>
+        <p className="text-sm text-muted-foreground">Checking session…</p>
       </main>
     );
   }
 
   return (
-    <main>
-      <h1>Groups</h1>
+    <main className="space-y-6">
+      <h1 className="font-heading text-2xl font-semibold tracking-tight">Groups</h1>
 
-      <form onSubmit={handleCreateGroup}>
-        <input
-          type="text"
-          placeholder="New group name"
-          value={newGroupName}
-          onChange={(event) => setNewGroupName(event.target.value)}
-        />
-        <button type="submit" disabled={creating}>
-          {creating ? "Creating…" : "Create Group"}
-        </button>
-        {createError && <p role="alert">{createError}</p>}
-      </form>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Create Group</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleCreateGroup} className="flex flex-wrap items-start gap-3">
+            <Input
+              type="text"
+              placeholder="New group name"
+              value={newGroupName}
+              onChange={(event) => setNewGroupName(event.target.value)}
+              className="max-w-xs"
+            />
+            <Button type="submit" disabled={creating}>
+              {creating ? "Creating…" : "Create Group"}
+            </Button>
+          </form>
+          {createError && (
+            <p role="alert" className="mt-2 text-sm font-medium text-destructive">
+              {createError}
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
-      {loading && <p>Loading groups…</p>}
-      {error && <p role="alert">{error}</p>}
+      {loading && <p className="text-sm text-muted-foreground">Loading groups…</p>}
+      {error && (
+        <p role="alert" className="text-sm font-medium text-destructive">
+          {error}
+        </p>
+      )}
       {!loading && !error && (
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Created</th>
-              <th>Members</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead>Members</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {rows.map((row) => (
-              <tr
+              <TableRow
                 key={row.id}
                 onClick={() => router.push(`/groups/${row.id}`)}
-                style={{ cursor: "pointer" }}
+                className="cursor-pointer"
               >
-                <td>{row.name}</td>
-                <td>{new Date(row.createdAt).toLocaleDateString()}</td>
-                <td>{row.memberCount}</td>
-              </tr>
+                <TableCell className="font-medium">{row.name}</TableCell>
+                <TableCell className="text-muted-foreground">
+                  {new Date(row.createdAt).toLocaleDateString()}
+                </TableCell>
+                <TableCell className="text-muted-foreground">{row.memberCount}</TableCell>
+              </TableRow>
             ))}
             {rows.length === 0 && (
-              <tr>
-                <td colSpan={3}>No groups yet.</td>
-              </tr>
+              <TableRow>
+                <TableCell colSpan={3} className="text-center text-muted-foreground">
+                  No groups yet.
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
     </main>
   );

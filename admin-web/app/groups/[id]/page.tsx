@@ -4,6 +4,18 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAdminGuard } from "@/lib/authGuard";
 import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type MemberRow = {
   userId: string;
@@ -191,88 +203,128 @@ export default function GroupDetailPage() {
   if (checking || !session) {
     return (
       <main>
-        <p>Checking session…</p>
+        <p className="text-sm text-muted-foreground">Checking session…</p>
       </main>
     );
   }
 
   return (
-    <main>
-      <h1>{groupName ?? "Group"}</h1>
-      {loading && <p>Loading group…</p>}
-      {error && <p role="alert">{error}</p>}
+    <main className="space-y-8">
+      <h1 className="font-heading text-2xl font-semibold tracking-tight">{groupName ?? "Group"}</h1>
+      {loading && <p className="text-sm text-muted-foreground">Loading group…</p>}
+      {error && (
+        <p role="alert" className="text-sm font-medium text-destructive">
+          {error}
+        </p>
+      )}
 
       {!loading && !error && (
         <>
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {members.map((member) => (
-                <tr key={member.userId}>
-                  <td>{member.fullName ?? "—"}</td>
-                  <td>
-                    <button
+                <TableRow key={member.userId}>
+                  <TableCell className="font-medium">{member.fullName ?? "—"}</TableCell>
+                  <TableCell className="text-right">
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleRemoveMember(member.userId)}
                       disabled={removingUserId === member.userId}
                     >
                       {removingUserId === member.userId ? "Removing…" : "Remove"}
-                    </button>
-                  </td>
-                </tr>
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
               {members.length === 0 && (
-                <tr>
-                  <td colSpan={2}>No members yet.</td>
-                </tr>
+                <TableRow>
+                  <TableCell colSpan={2} className="text-center text-muted-foreground">
+                    No members yet.
+                  </TableCell>
+                </TableRow>
               )}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
 
-          <form onSubmit={handleAddMember}>
-            <select
-              value={selectedUserId}
-              onChange={(event) => setSelectedUserId(event.target.value)}
-            >
-              <option value="">Select a member…</option>
-              {availableProfiles.map((profile) => (
-                <option key={profile.userId} value={profile.userId}>
-                  {profile.fullName ?? profile.userId}
-                </option>
-              ))}
-            </select>
-            <button type="submit" disabled={adding}>
-              {adding ? "Adding…" : "Add Member"}
-            </button>
-            {addError && <p role="alert">{addError}</p>}
-          </form>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Add Member</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleAddMember} className="flex flex-wrap items-start gap-3">
+                <select
+                  value={selectedUserId}
+                  onChange={(event) => setSelectedUserId(event.target.value)}
+                  className="h-10 max-w-xs flex-1 rounded-md border border-input bg-background px-3 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  <option value="">Select a member…</option>
+                  {availableProfiles.map((profile) => (
+                    <option key={profile.userId} value={profile.userId}>
+                      {profile.fullName ?? profile.userId}
+                    </option>
+                  ))}
+                </select>
+                <Button type="submit" disabled={adding}>
+                  {adding ? "Adding…" : "Add Member"}
+                </Button>
+              </form>
+              {addError && (
+                <p role="alert" className="mt-2 text-sm font-medium text-destructive">
+                  {addError}
+                </p>
+              )}
+            </CardContent>
+          </Card>
 
-          <h2>Broadcast Link</h2>
-          <form onSubmit={handleSendLink}>
-            <input
-              type="url"
-              placeholder="https://example.com"
-              value={linkUrl}
-              onChange={(event) => setLinkUrl(event.target.value)}
-              required
-            />
-            <input
-              type="text"
-              placeholder="Title (optional)"
-              value={linkTitle}
-              onChange={(event) => setLinkTitle(event.target.value)}
-            />
-            <button type="submit" disabled={sendingLink}>
-              {sendingLink ? "Sending…" : "Send to Group"}
-            </button>
-            {linkError && <p role="alert">{linkError}</p>}
-            {linkSuccess && <p>{linkSuccess}</p>}
-          </form>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Broadcast Link</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSendLink} className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="link-url">URL</Label>
+                  <Input
+                    id="link-url"
+                    type="url"
+                    placeholder="https://example.com"
+                    value={linkUrl}
+                    onChange={(event) => setLinkUrl(event.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="link-title">Title (optional)</Label>
+                  <Input
+                    id="link-title"
+                    type="text"
+                    placeholder="Title (optional)"
+                    value={linkTitle}
+                    onChange={(event) => setLinkTitle(event.target.value)}
+                  />
+                </div>
+                <Button type="submit" disabled={sendingLink}>
+                  {sendingLink ? "Sending…" : "Send to Group"}
+                </Button>
+                {linkError && (
+                  <p role="alert" className="text-sm font-medium text-destructive">
+                    {linkError}
+                  </p>
+                )}
+                {linkSuccess && (
+                  <p className="text-sm font-medium text-accent-foreground">{linkSuccess}</p>
+                )}
+              </form>
+            </CardContent>
+          </Card>
         </>
       )}
     </main>

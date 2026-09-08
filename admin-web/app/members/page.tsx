@@ -4,6 +4,15 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAdminGuard } from "@/lib/authGuard";
 import { supabase } from "@/lib/supabase";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type MemberRow = {
   id: string;
@@ -76,39 +85,49 @@ export default function MembersPage() {
   if (checking || !session) {
     return (
       <main>
-        <p>Checking session…</p>
+        <p className="text-sm text-muted-foreground">Checking session…</p>
       </main>
     );
   }
 
   return (
-    <main>
-      <h1>Members</h1>
-      {loading && <p>Loading members…</p>}
-      {error && <p role="alert">{error}</p>}
+    <main className="space-y-6">
+      <h1 className="font-heading text-2xl font-semibold tracking-tight">Members</h1>
+      {loading && <p className="text-sm text-muted-foreground">Loading members…</p>}
+      {error && (
+        <p role="alert" className="text-sm font-medium text-destructive">
+          {error}
+        </p>
+      )}
       {!loading && !error && (
-        <table>
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Status</th>
-              <th>Checked In</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Checked In</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {rows.map((row) => (
-              <tr
+              <TableRow
                 key={row.id}
                 onClick={() => router.push(`/members/${row.id}`)}
-                style={{ cursor: "pointer" }}
+                className="cursor-pointer"
               >
-                <td>{row.fullName ?? "—"}</td>
-                <td>{row.status}</td>
-                <td>{row.checkedInAt ? new Date(row.checkedInAt).toLocaleTimeString() : "—"}</td>
-              </tr>
+                <TableCell className="font-medium">{row.fullName ?? "—"}</TableCell>
+                <TableCell>
+                  <Badge variant={row.status === "Present" ? "accent" : "outline"}>
+                    {row.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {row.checkedInAt ? new Date(row.checkedInAt).toLocaleTimeString() : "—"}
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
     </main>
   );

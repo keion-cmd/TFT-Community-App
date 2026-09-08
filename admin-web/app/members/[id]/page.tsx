@@ -4,6 +4,16 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useAdminGuard } from "@/lib/authGuard";
 import { supabase } from "@/lib/supabase";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type AttendanceRecord = {
   id: string;
@@ -71,57 +81,58 @@ export default function MemberDetailPage() {
   if (checking || !session) {
     return (
       <main>
-        <p>Checking session…</p>
+        <p className="text-sm text-muted-foreground">Checking session…</p>
       </main>
     );
   }
 
   return (
-    <main>
-      <h1>{fullName ?? "Member"}</h1>
-      {loading && <p>Loading attendance history…</p>}
-      {error && <p role="alert">{error}</p>}
+    <main className="space-y-6">
+      <h1 className="font-heading text-2xl font-semibold tracking-tight">{fullName ?? "Member"}</h1>
+      {loading && <p className="text-sm text-muted-foreground">Loading attendance history…</p>}
+      {error && (
+        <p role="alert" className="text-sm font-medium text-destructive">
+          {error}
+        </p>
+      )}
       {!loading && !error && (
-        <table>
-          <thead>
-            <tr>
-              <th>Photo</th>
-              <th>Date</th>
-              <th>Time</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Photo</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Time</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {history.map((record) => {
               const date = new Date(record.checked_in_at);
               return (
-                <tr key={record.id}>
-                  <td>
-                    {record.thumbnailUrl ? (
-                      <img
-                        src={record.thumbnailUrl}
-                        alt="Check-in photo"
-                        width={48}
-                        height={48}
-                        style={{ objectFit: "cover", borderRadius: 4 }}
-                      />
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td>{date.toLocaleDateString()}</td>
-                  <td>{date.toLocaleTimeString()}</td>
-                  <td>Present</td>
-                </tr>
+                <TableRow key={record.id}>
+                  <TableCell>
+                    <Avatar className="h-12 w-12 rounded-md">
+                      <AvatarImage src={record.thumbnailUrl ?? undefined} alt="Check-in photo" className="rounded-md" />
+                      <AvatarFallback className="rounded-md">—</AvatarFallback>
+                    </Avatar>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">{date.toLocaleDateString()}</TableCell>
+                  <TableCell className="text-muted-foreground">{date.toLocaleTimeString()}</TableCell>
+                  <TableCell>
+                    <Badge variant="accent">Present</Badge>
+                  </TableCell>
+                </TableRow>
               );
             })}
             {history.length === 0 && (
-              <tr>
-                <td colSpan={4}>No attendance history.</td>
-              </tr>
+              <TableRow>
+                <TableCell colSpan={4} className="text-center text-muted-foreground">
+                  No attendance history.
+                </TableCell>
+              </TableRow>
             )}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
     </main>
   );
