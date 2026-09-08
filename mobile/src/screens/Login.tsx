@@ -12,6 +12,7 @@ import {
 import { useRouter } from "expo-router";
 
 import { supabase } from "../lib/supabase";
+import { signInWithGoogle } from "../lib/googleAuth";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -21,6 +22,7 @@ export default function LoginScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -55,6 +57,24 @@ export default function LoginScreen() {
 
     if (signInError) {
       setError(signInError.message);
+      return;
+    }
+
+    router.replace("/home");
+  }
+
+  async function handleGoogleSignIn() {
+    setError(null);
+    setGoogleSubmitting(true);
+    const { error: googleError, cancelled } = await signInWithGoogle();
+    setGoogleSubmitting(false);
+
+    if (cancelled) {
+      return;
+    }
+
+    if (googleError) {
+      setError(googleError.message);
       return;
     }
 
@@ -117,6 +137,24 @@ export default function LoginScreen() {
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={styles.buttonText}>Sign In</Text>
+        )}
+      </Pressable>
+
+      <View style={styles.dividerRow}>
+        <View style={styles.dividerLine} />
+        <Text style={styles.dividerText}>or</Text>
+        <View style={styles.dividerLine} />
+      </View>
+
+      <Pressable
+        style={[styles.googleButton, googleSubmitting && styles.buttonDisabled]}
+        onPress={handleGoogleSignIn}
+        disabled={submitting || googleSubmitting}
+      >
+        {googleSubmitting ? (
+          <ActivityIndicator color="#2563eb" />
+        ) : (
+          <Text style={styles.googleButtonText}>Continue with Google</Text>
         )}
       </Pressable>
 
@@ -184,6 +222,33 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: { opacity: 0.6 },
   buttonText: { color: "#fff", fontSize: 16, fontWeight: "600" },
+  dividerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#ddd",
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    color: "#888",
+    fontSize: 13,
+  },
+  googleButton: {
+    width: "100%",
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#ccc",
+    paddingVertical: 12,
+    alignItems: "center",
+  },
+  googleButtonText: { color: "#2563eb", fontSize: 16, fontWeight: "600" },
   linkText: {
     color: "#2563eb",
     fontSize: 14,
