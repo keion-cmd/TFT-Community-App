@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   StyleSheet,
@@ -19,6 +20,18 @@ import {
   sendMessage,
   subscribeToGroupMessages,
 } from "../lib/messenger";
+
+function parseLinkContent(content: string | null): { label: string; url: string } {
+  const raw = content ?? "";
+  const separatorIndex = raw.indexOf(" — ");
+  if (separatorIndex === -1) {
+    return { label: raw, url: raw };
+  }
+  return {
+    label: raw.slice(0, separatorIndex),
+    url: raw.slice(separatorIndex + 3),
+  };
+}
 
 export default function GroupChatScreen() {
   const router = useRouter();
@@ -112,11 +125,22 @@ export default function GroupChatScreen() {
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
         renderItem={({ item }) => {
           const isOwn = item.sender_id === userId;
+          const isLink = item.type === "link";
+          const link = isLink ? parseLinkContent(item.content) : null;
           return (
             <View style={[styles.bubbleRow, isOwn ? styles.bubbleRowOwn : styles.bubbleRowOther]}>
               <View style={[styles.bubble, isOwn ? styles.bubbleOwn : styles.bubbleOther]}>
                 {!isOwn ? <Text style={styles.sender}>{item.sender_name ?? "Member"}</Text> : null}
-                <Text style={isOwn ? styles.textOwn : styles.textOther}>{item.content}</Text>
+                {isLink && link ? (
+                  <Pressable onPress={() => Linking.openURL(link.url)}>
+                    <Text style={styles.linkLabel}>🔗 Link</Text>
+                    <Text style={[isOwn ? styles.textOwn : styles.textOther, styles.linkText]}>
+                      {link.label}
+                    </Text>
+                  </Pressable>
+                ) : (
+                  <Text style={isOwn ? styles.textOwn : styles.textOther}>{item.content}</Text>
+                )}
               </View>
             </View>
           );
@@ -156,6 +180,8 @@ const styles = StyleSheet.create({
   sender: { fontSize: 11, fontWeight: "600", color: "#374151", marginBottom: 2 },
   textOwn: { color: "#fff", fontSize: 15 },
   textOther: { color: "#111827", fontSize: 15 },
+  linkLabel: { fontSize: 10, fontWeight: "700", color: "#93c5fd", marginBottom: 2 },
+  linkText: { textDecorationLine: "underline" },
   inputRow: {
     flexDirection: "row",
     alignItems: "flex-end",

@@ -31,6 +31,12 @@ export default function GroupDetailPage() {
   const [adding, setAdding] = useState(false);
   const [removingUserId, setRemovingUserId] = useState<string | null>(null);
 
+  const [linkUrl, setLinkUrl] = useState("");
+  const [linkTitle, setLinkTitle] = useState("");
+  const [linkError, setLinkError] = useState<string | null>(null);
+  const [linkSuccess, setLinkSuccess] = useState<string | null>(null);
+  const [sendingLink, setSendingLink] = useState(false);
+
   async function loadGroup() {
     if (!groupId) return;
     setLoading(true);
@@ -101,6 +107,66 @@ export default function GroupDetailPage() {
 
     setSelectedUserId("");
     loadGroup();
+  }
+
+  function isValidUrl(value: string): boolean {
+    try {
+      new URL(value);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async function handleSendLink(event: React.FormEvent) {
+    event.preventDefault();
+    setLinkError(null);
+    setLinkSuccess(null);
+
+    const url = linkUrl.trim();
+    const title = linkTitle.trim();
+
+    if (!url || !isValidUrl(url)) {
+      setLinkError("Enter a valid URL (e.g. https://example.com).");
+      return;
+    }
+
+    if (!groupId || !session) return;
+
+    setSendingLink(true);
+
+    const { error: linkInsertError } = await supabase.from("shared_links").insert({
+      url,
+      title: title || null,
+      shared_by: session.userId,
+      group_id: groupId,
+    });
+
+    if (linkInsertError) {
+      setSendingLink(false);
+      setLinkError(linkInsertError.message);
+      return;
+    }
+
+    const content = title ? `${title} — ${url}` : url;
+
+    const { error: messageInsertError } = await supabase.from("messages").insert({
+      group_id: groupId,
+      sender_id: session.userId,
+      content,
+      type: "link",
+    });
+
+    setSendingLink(false);
+
+    if (messageInsertError) {
+      setLinkError(messageInsertError.message);
+      return;
+    }
+
+    setLinkUrl("");
+    setLinkTitle("");
+    setLinkSuccess("Link sent to group.");
   }
 
   async function handleRemoveMember(userId: string) {
@@ -184,6 +250,28 @@ export default function GroupDetailPage() {
               {adding ? "Adding…" : "Add Member"}
             </button>
             {addError && <p role="alert">{addError}</p>}
+          </form>
+
+          <h2>Broadcast Link</h2>
+          <form onSubmit={handleSendLink}>
+            <input
+              type="url"
+              placeholder="https://example.com"
+              value={linkUrl}
+              onChange={(event) => setLinkUrl(event.target.value)}
+              required
+            />
+            <input
+              type="text"
+              placeholder="Title (optional)"
+              value={linkTitle}
+              onChange={(event) => setLinkTitle(event.target.value)}
+            />
+            <button type="submit" disabled={sendingLink}>
+              {sendingLink ? "Sending…" : "Send to Group"}
+            </button>
+            {linkError && <p role="alert">{linkError}</p>}
+            {linkSuccess && <p>{linkSuccess}</p>}
           </form>
         </>
       )}
