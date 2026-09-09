@@ -27,7 +27,12 @@ export default function LoginPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("error") === "not_admin") {
-      setError("This account does not have admin access.");
+      const reasonParam = params.get("reason");
+      if (reasonParam) {
+        setError(`This account does not have admin access. (${decodeURIComponent(reasonParam)})`);
+      } else {
+        setError("This account does not have admin access.");
+      }
     }
   }, []);
 
